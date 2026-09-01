@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <accessibility-service xmlns:android="http://schemas.android.com/apk/res/android"
-    android:accessibilityEventTypes="typeWindowStateChanged|typeWindowContentChanged"
+    android:accessibilityEventTypes="typeWindowStateChanged"
     android:accessibilityFlags="flagRetrieveInteractiveWindows|flagReportViewIds"
     android:accessibilityFeedbackType="feedbackGeneric"
     android:canRetrieveWindowContent="true"
-    android:notificationTimeout="100"
+    android:notificationTimeout="300"
     />
 <!--
+  MUDANÇA IMPORTANTE: removido "typeWindowContentChanged" da lista de
+  eventos. Esse evento dispara a cada pequena mudança visual (ex: um
+  mapa redesenhando constantemente), e cada disparo fazia o serviço
+  percorrer a árvore inteira de nodes via chamada síncrona pro
+  processo do app-alvo — isso sobrecarregava e travava apps com mapa
+  (como o Uber). "typeWindowStateChanged" sozinho já cobre trocas de
+  tela, que é o que precisamos para detectar uma nova oferta.
+
   DE PROPÓSITO sem "android:packageNames" nesta fase de diagnóstico:
   assim o serviço reage a QUALQUER app na tela, e o log mostra de qual
   pacote veio cada evento. Isso serve só para descobrir o package name

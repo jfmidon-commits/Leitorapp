@@ -9,7 +9,11 @@ class OfferAccessibilityService : AccessibilityService() {
 
     companion object {
         private const val TAG = "OfferCapture"
+        private const val MIN_INTERVAL_MS = 500L
+        private const val MAX_NODES = 400
     }
+
+    private var lastProcessedAt = 0L
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event == null) return
@@ -17,6 +21,10 @@ class OfferAccessibilityService : AccessibilityService() {
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
             AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+                val now = System.currentTimeMillis()
+                if (now - lastProcessedAt < MIN_INTERVAL_MS) return
+                lastProcessedAt = now
+
                 val pkg = event.packageName?.toString() ?: "desconhecido"
 
                 val root = rootInActiveWindow ?: run {
@@ -63,12 +71,15 @@ class OfferAccessibilityService : AccessibilityService() {
 
     private fun collectText(node: AccessibilityNodeInfo?, out: MutableList<String>) {
         if (node == null) return
+        if (out.size >= MAX_NODES) return // proteção contra árvores muito profundas (ex: mapas)
+
         val text = node.text?.toString()
         if (!text.isNullOrBlank()) out.add(text)
         val desc = node.contentDescription?.toString()
         if (!desc.isNullOrBlank()) out.add(desc)
 
         for (i in 0 until node.childCount) {
+            if (out.size >= MAX_NODES) break
             val child = node.getChild(i) ?: continue
             collectText(child, out)
             child.recycle()
