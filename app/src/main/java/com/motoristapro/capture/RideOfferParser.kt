@@ -36,7 +36,11 @@ object RideOfferParser {
         val mins = DURATION_MIN_REGEX.find(joined)?.groupValues?.get(1)?.toLongOrNull() ?: 0L
         val duration = if (hours > 0 || mins > 0) (hours * 3600 + mins * 60) else null
 
-        if (value == null && distance == null && duration == null) return null
+        // Exige "R$" (marcador quase inequívoco) OU km+min juntos, para
+        // evitar falso positivo de duração isolada (ex: números de
+        // armazenamento/bateria da tela sendo confundidos com minutos).
+        val looksLikeRealOffer = value != null || (distance != null && duration != null)
+        if (!looksLikeRealOffer) return null
 
         Log.d(TAG, "Parsed -> valor=${value}c distancia=${distance}m duracao=${duration}s")
         return RawOfferData(value, distance, duration, joined)

@@ -20,51 +20,41 @@ class OfferAccessibilityService : AccessibilityService() {
 
         when (event.eventType) {
             AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED,
-            AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED -> {
+            AccessibilityEvent.TYPE_WINDOWS_CHANGED -> {
                 val now = System.currentTimeMillis()
                 if (now - lastProcessedAt < MIN_INTERVAL_MS) return
                 lastProcessedAt = now
+                scanAllWindows()
+            }
+        }
+    }
 
-                val pkg = event.packageName?.toString() ?: "desconhecido"
+    /**
+     * Varre TODAS as janelas visíveis no momento (não só a "ativa"/focada).
+     * Isso é essencial porque o card de oferta do Uber aparece como um
+     * overlay flutuante por cima de outro app (ex: a tela inicial) e
+     * NÃO tem foco de input — rootInActiveWindow() nunca o encontraria.
+     */
+    private fun scanAllWindows() {
+        val windowList = windows ?: return
+        for (window in windowList) {
+            val root = window.root ?: continue
+            val pkg = root.packageName?.toString() ?: "desconhecido"
 
-                val root = rootInActiveWindow ?: run {
-                    Log.d(TAG, "[$pkg] rootInActiveWindow nulo")
-                    return
-                }
+            val texts = mutableListOf<String>()
+            collectText(root, texts)
+            root.recycle()
 
-                // rootInActiveWindow() pode ficar "atrasado" durante troca de
-                // apps e devolver a janela anterior. Só aceitamos o texto se
-                // o pacote da raiz lida bate com o pacote do evento — senão é
-                // leitura obsoleta (ex: ler a tela do próprio Leitorapp
-                // enquanto o evento diz que veio do Uber).
-                val rootPkg = root.packageName?.toString()
-                if (rootPkg != pkg) {
-                    Log.d(TAG, "[$pkg] descartado: raiz lida pertence a '$rootPkg' (leitura obsoleta)")
-                    root.recycle()
-                    return
-                }
+            if (texts.isEmpty()) continue
 
-                val texts = mutableListOf<String>()
-                collectText(root, texts)
-                root.recycle()
+            val joined = texts.joinToString(" | ")
+            Log.d(TAG, "[$pkg] $joined")
 
-                if (texts.isEmpty()) {
-                    return
-                }
-
-                val joined = texts.joinToString(" | ")
-                Log.d(TAG, "[$pkg] Texto extraído: $joined")
-
-                val parsed = RideOfferParser.parse(texts)
-                if (parsed != null) {
-                    CaptureEventBridge.emit(parsed)
-                } else {
-                    // Mesmo sem reconhecer um padrão de oferta, publicamos o
-                    // pacote+texto bruto no log de debug — é o que permite
-                    // descobrir o package name certo e ver o que a tela expõe,
-                    // sem precisar de adb.
-                    CaptureEventBridge.emitDebug("[$pkg] $joined")
-                }
+            val parsed = RideOfferParser.parse(texts)
+            if (parsed != null) {
+                CaptureEventBridge.emit(parsed)
+            } else {
+                CaptureEventBridge.emitDebug("[$pkg] $joined")
             }
         }
     }
