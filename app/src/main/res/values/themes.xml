@@ -1,0 +1,3 @@
+<resources>
+    <style name="Theme.Leitorapp" parent="Theme.MaterialComponents.DayNight.NoActionBar" />
+</resources>
