@@ -1,0 +1,16 @@
+<!--
+  Adicionar dentro da tag <application> do AndroidManifest.xml existente
+  do MotoristaPro. Não sobrescreva o manifest — só mescle este trecho.
+-->
+
+<service
+    android:name="com.motoristapro.capture.OfferAccessibilityService"
+    android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE"
+    android:exported="true">
+    <intent-filter>
+        <action android:name="android.accessibilityservice.AccessibilityService" />
+    </intent-filter>
+    <meta-data
+        android:name="android.accessibilityservice"
+        android:resource="@xml/offer_accessibility_config" />
+</service>
