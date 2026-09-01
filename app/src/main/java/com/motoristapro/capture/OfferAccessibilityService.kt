@@ -23,6 +23,19 @@ class OfferAccessibilityService : AccessibilityService() {
                     Log.d(TAG, "[$pkg] rootInActiveWindow nulo")
                     return
                 }
+
+                // rootInActiveWindow() pode ficar "atrasado" durante troca de
+                // apps e devolver a janela anterior. Só aceitamos o texto se
+                // o pacote da raiz lida bate com o pacote do evento — senão é
+                // leitura obsoleta (ex: ler a tela do próprio Leitorapp
+                // enquanto o evento diz que veio do Uber).
+                val rootPkg = root.packageName?.toString()
+                if (rootPkg != pkg) {
+                    Log.d(TAG, "[$pkg] descartado: raiz lida pertence a '$rootPkg' (leitura obsoleta)")
+                    root.recycle()
+                    return
+                }
+
                 val texts = mutableListOf<String>()
                 collectText(root, texts)
                 root.recycle()
